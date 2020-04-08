@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten"
-	"github.com/kr/pretty"
 	"github.com/mewkiz/pkg/imgutil"
 	"github.com/mewspring/ren/pkg/assets"
 	"github.com/pkg/errors"
@@ -61,18 +60,27 @@ func (game *Game) run(screen *ebiten.Image) error {
 	}
 	// Render to screen.
 	opt := &ebiten.DrawImageOptions{}
-	//fmt.Printf("translate with %v,%v\n", game.tx, game.ty)
 	opt.GeoM.Scale(0.5, 0.5)
-	game.tx += -0.5
-	game.ty += -0.5
+	//fmt.Printf("translate with %v,%v\n", game.tx, game.ty)
 	if err := screen.DrawImage(game.yenwoodBackgroundLayer, opt); err != nil {
 		return errors.WithStack(err)
 	}
-
 	const dir = 6
 	attackAnim := game.balrogAttackAnimFromDir[dir]
 	opt2 := &ebiten.DrawImageOptions{}
-	opt2.GeoM.Translate(300, 300)
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		game.ty += -5
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		game.ty += +5
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+		game.tx += -5
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
+		game.tx += +5
+	}
+	opt2.GeoM.Translate(300+game.tx, 300+game.ty)
 	game.balrogAttackAnim.Update()
 	if curAttackFrame, ok := game.balrogAttackAnim.FrameNum(); ok {
 		if err := screen.DrawImage(attackAnim[curAttackFrame], opt2); err != nil {
@@ -101,6 +109,7 @@ func (game *Game) loadAssets() error {
 	if err := game.loadBalrogAssets(); err != nil {
 		return errors.WithStack(err)
 	}
+	fmt.Printf("loading assets (done)\n")
 	return nil
 }
 
@@ -192,13 +201,7 @@ func (game *Game) loadBalrogAssets() error {
 			x := frameNum * frameWidth
 			y := dir * frameHeight
 			r := image.Rect(x, y, x+frameWidth, y+frameHeight)
-			pretty.Println("rect:", r)
 			frame := balrogUnit.SubImage(r)
-			if dir == 0 && i == 0 {
-				if err := imgutil.WriteFile(fmt.Sprintf("balrog_frame_0.png"), frame); err != nil {
-					return errors.WithStack(err)
-				}
-			}
 			standFrames = append(standFrames, frame.(*ebiten.Image))
 		}
 		game.balrogStandAnimFromDir[dir] = standFrames
@@ -210,13 +213,7 @@ func (game *Game) loadBalrogAssets() error {
 			x := frameNum * frameWidth
 			y := dir * frameHeight
 			r := image.Rect(x, y, x+frameWidth, y+frameHeight)
-			pretty.Println("rect:", r)
 			frame := balrogUnit.SubImage(r)
-			if dir == 0 && i == 0 {
-				if err := imgutil.WriteFile(fmt.Sprintf("balrog_frame_0.png"), frame); err != nil {
-					return errors.WithStack(err)
-				}
-			}
 			walkFrames = append(walkFrames, frame.(*ebiten.Image))
 		}
 		game.balrogWalkAnimFromDir[dir] = walkFrames
@@ -228,13 +225,7 @@ func (game *Game) loadBalrogAssets() error {
 			x := frameNum * frameWidth
 			y := dir * frameHeight
 			r := image.Rect(x, y, x+frameWidth, y+frameHeight)
-			pretty.Println("rect:", r)
 			frame := balrogUnit.SubImage(r)
-			if dir == 0 && i == 0 {
-				if err := imgutil.WriteFile(fmt.Sprintf("balrog_frame_0.png"), frame); err != nil {
-					return errors.WithStack(err)
-				}
-			}
 			attackFrames = append(attackFrames, frame.(*ebiten.Image))
 		}
 		game.balrogAttackAnimFromDir[dir] = attackFrames
@@ -343,7 +334,6 @@ func (anim *Anim) FrameNum() (int, bool) {
 	switch anim.AnimType {
 	case AnimTypeOnce:
 		if anim.CurFrame >= anim.NFrames {
-			fmt.Println("false")
 			return 0, false
 		}
 	case AnimTypeLoop:
@@ -353,6 +343,5 @@ func (anim *Anim) FrameNum() (int, bool) {
 	default:
 		panic(fmt.Errorf("support for animation type %v not yet implemented", anim.AnimType))
 	}
-	fmt.Println("true, curFrame:", anim.CurFrame)
 	return anim.CurFrame, true
 }
