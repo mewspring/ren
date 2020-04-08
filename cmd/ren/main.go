@@ -41,14 +41,39 @@ func renderYenwood() error {
 		nrows: 3, // number of rows
 		ncols: 4, // number of columns
 	}
-	thumb := yenwood.thumb()
+	// background small
+	thumbImg := yenwood.thumb()
 	thumbPath := fmt.Sprintf("%s_thumb.png", yenwood.name)
-	if err := imgutil.WriteFile(thumbPath, thumb); err != nil {
+	fmt.Printf("creating %q\n", thumbPath)
+	if err := imgutil.WriteFile(thumbPath, thumbImg); err != nil {
 		return errors.WithStack(err)
 	}
-	background := yenwood.background()
+	// background
+	backgroundImg := yenwood.backgroundLayer()
 	backgroundPath := fmt.Sprintf("%s_background.png", yenwood.name)
-	if err := imgutil.WriteFile(backgroundPath, background); err != nil {
+	fmt.Printf("creating %q\n", backgroundPath)
+	if err := imgutil.WriteFile(backgroundPath, backgroundImg); err != nil {
+		return errors.WithStack(err)
+	}
+	// normal
+	normalImg := yenwood.normalLayer()
+	normalPath := fmt.Sprintf("%s_normal.png", yenwood.name)
+	fmt.Printf("creating %q\n", normalPath)
+	if err := imgutil.WriteFile(normalPath, normalImg); err != nil {
+		return errors.WithStack(err)
+	}
+	// normal
+	heightImg := yenwood.heightLayer()
+	heightPath := fmt.Sprintf("%s_height.png", yenwood.name)
+	fmt.Printf("creating %q\n", heightPath)
+	if err := imgutil.WriteFile(heightPath, heightImg); err != nil {
+		return errors.WithStack(err)
+	}
+	// as
+	asImg := yenwood.asLayer()
+	asPath := fmt.Sprintf("%s_as.png", yenwood.name)
+	fmt.Printf("creating %q\n", asPath)
+	if err := imgutil.WriteFile(asPath, asImg); err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
@@ -56,13 +81,9 @@ func renderYenwood() error {
 
 // row=0, col=0 starts at bottom left.
 type area struct {
-	name            string
-	nrows           int
-	ncols           int
-	backgroundLayer draw.Image
-	normalLayer     draw.Image
-	hightLayer      draw.Image
-	asLayer         draw.Image
+	name  string
+	nrows int
+	ncols int
 }
 
 func (a *area) getWidth() int {
@@ -101,26 +122,45 @@ func (a *area) getHeight() int {
 	return height
 }
 
-func (a *area) background() image.Image {
+func (a *area) backgroundLayer() image.Image {
 	width, height := a.getWidth(), a.getHeight()
+	return a.layer(kindBackground, width, height)
+}
+
+func (a *area) normalLayer() image.Image {
+	width, height := a.getWidth(), a.getHeight()
+	return a.layer(kindNormal, width/2, height/2)
+}
+
+func (a *area) heightLayer() image.Image {
+	width, height := a.getWidth(), a.getHeight()
+	return a.layer(kindHeight, width, height)
+}
+
+func (a *area) asLayer() image.Image {
+	width, height := a.getWidth(), a.getHeight()
+	return a.layer(kindAS, width/2, height/2)
+}
+
+func (a *area) layer(kind string, width, height int) image.Image {
 	bounds := image.Rect(0, 0, width, height)
-	background := image.NewRGBA(bounds)
+	dst := image.NewRGBA(bounds)
 	y := 0
 	for row := a.nrows - 1; row >= 0; row-- {
 		x := 0
 		var srcHeight int
 		for col := 0; col < a.ncols; col++ {
-			src := a.subimg(kindBackground, row, col)
+			src := a.subimg(kind, row, col)
 			srcWidth := src.Bounds().Dx()
 			srcHeight = src.Bounds().Dy()
 			dr := image.Rect(x, y, x+srcWidth, y+srcHeight)
 			sp := image.Pt(0, 0)
-			draw.Draw(background, dr, src, sp, draw.Src)
+			draw.Draw(dst, dr, src, sp, draw.Src)
 			x += srcWidth
 		}
 		y += srcHeight
 	}
-	return background
+	return dst
 }
 
 func (a *area) thumb() image.Image {
@@ -147,6 +187,7 @@ func (a *area) subimg(kind string, row, col int) image.Image {
 
 // load loads the game assets and populates the imgs map.
 func load() error {
+	fmt.Println("loading graphics")
 	imgNames := []string{
 		Yenwood_AS_R000_C000,
 		Yenwood_AS_R000_C001,
